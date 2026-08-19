@@ -1,0 +1,15 @@
+# dsh-mobile-remote 插件 bundle 补丁层。
+# 通过 `dsh plugin --profile web add dsh-mobile-remote`（或桌面端「插件管理 → 自定义安装」）
+# 安装后，本文件会在 dsh web 启动时被挂载，把下面的插件行插入到宿主组合中。
+#
+# 插件是 host + client 双面插件：
+#   - host 侧（lib/index.js，inject [webServer]）：
+#       * 通过 ctx.webServer.tapIndex 注入移动端响应式 CSS / JS；
+#       * 通过 ctx.webServer.register 提供 /__dsh_remote/* API
+#         （status / toggle / heartbeat / qr），支持设置页远程控制开关、二维码、设备数。
+#   - client 侧（lib/client.js，package.json 的 dsh.client 声明）：
+#       * 由 dsh-client-modules 扫描加载，注册「设置 → 远程控制」section。
+- insert:
+    - id: dsh-mobile-remote
+      name: 'dsh-mobile-remote'
+      inject: [webServer]
