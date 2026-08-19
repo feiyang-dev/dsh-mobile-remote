@@ -26,6 +26,8 @@ jobs:
         run: npm publish
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        # 未配置 NPM_TOKEN 时跳过发布（Release 创建不依赖此步骤）
+        if: ${{ secrets.NPM_TOKEN != '' }}
 
       - name: Package tarball for release assets
         run: npm pack
