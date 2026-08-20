@@ -16,12 +16,12 @@ Write-Host "== 2/4 创建 GitHub 远程（如已有则跳过）==" -ForegroundCo
 git remote add origin https://github.com/feiyang-dev/dsh-mobile-remote.git 2>$null
 git remote set-url origin https://github.com/feiyang-dev/dsh-mobile-remote.git
 
-Write-Host "== 3/4 推送到 GitHub（含 v1.1.0 tag，触发自动发布 Actions）==" -ForegroundColor Cyan
+Write-Host "== 3/4 推送到 GitHub（含 v1.4.1 tag，触发自动发布 Actions）==" -ForegroundColor Cyan
 git push -u origin master
-git push origin v1.1.0
+git push origin v1.4.1
 
 Write-Host "== 4/4 完成 ==" -ForegroundColor Green
-Write-Host "推送完成！GitHub Actions 将自动执行：npm run check → npm publish → 生成 Release(v1.1.0)"
+Write-Host "推送完成！GitHub Actions 将自动执行：npm run check → npm publish → 生成 Release(v1.4.1)"
 Write-Host ""
 Write-Host "若 Actions 需要 NPM_TOKEN，请到仓库 Settings → Secrets and variables → Actions 添加："
 Write-Host "  NPM_TOKEN = npm 自动化 token（需 publish 权限）"

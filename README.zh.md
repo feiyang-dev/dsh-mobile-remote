@@ -23,9 +23,47 @@
 - **连接二维码**：自动生成 `http://<局域网IP>:<端口>` 的二维码，手机相机 / 浏览器扫码即连；
 - **开启 / 关闭开关**：一键切换 webserver 监听地址（`0.0.0.0` ↔ `127.0.0.1`），经 dsh 官方 HMR 热重载**无需重启服务**；
 - **当前连接的设备数量**：移动端心跳上报，实时统计在线设备数；
+- **远程访问密码门禁**（v1.2.0+）：管理员本机设置密码，外网隧道访问进入页面需先输密码，本机/局域网不受影响；
+- **远程访问提速**（v1.2.0+）：frpc 连接池调大，缓解外网访问首屏转圈慢；
+- **更丰富的数据展示**（v1.4.0）：设备列表可点击展开完整上报信息（系统 / 浏览器 / 屏幕 / 视口 / DPR / 设备内存 / CPU 核数 / 电池 / 网络 / 当前页面 / 首次连接 / 心跳次数）；「运行时信息」卡（运行时长 / 开机时长 / Node 版本 / PID / CPU 型号与核数 / 系统负载 / 内存使用率 / RSS / 堆内存）；**「DSH 状态」卡**（dsh 版本 / 会话总数 / 工作区列表 / 已安装插件 / 模型提供方，后台缓存）；「网络接口」卡（网卡名 / IP / 掩码 / MAC）；外网隧道详情（域名 / 端口 / frpc 版本 / PID / 运行时长 / 脱敏绑定码 / 日志查看）；
+- **外网隧道真实状态**（v1.4.1）：不再"假在线"——面板探测 frpc 日志确认隧道真正建立，断线重连降级「连接中」，token 鉴权失败显示红色「出错」+ 精确原因（如 `token in login doesn't match`）+ 一键重试；中转端 `FRP_TOKEN` 占位符时显示黄色警告条；隧道持续心跳保活，让中转端在线状态真实可靠；
 - 局域网地址列表、手机访问地址、配置位置一目了然。
 
 **核心卖点：纯命令行用户无需安装桌面端。** 官方 CLI 出于安全拒绝 `--host 0.0.0.0`，但本插件通过 profile 的 `cordis.patch.yml`（或 `--patch <overlay>`）写入 `webserver.host: 0.0.0.0`——这正是桌面端「移动端远程控制」开关的实现方式。手机与电脑共享同一个 dsh 后端进程与同一份 `~/.dsh` 数据，**会话列表、历史记录、工作区、设置全部天然双向同步，无需任何数据复制**。
+
+---
+
+## 远程访问密码（可自定义，通用自托管）
+
+为了让「远程（外网隧道）访问」更安全，插件内置**远程访问密码门禁**：
+
+- 在 **设置 → 远程控制** 面板的「远程访问密码」卡片中，管理员可**在本机设置 / 修改 / 清除**一个密码；
+- 设置后，任何**通过外网隧道（`*.dsh.xxx.top`，HTTPS 反代）**访问本机 DSH 的浏览器，进入页面时都会被全屏密码页拦截，**必须输入正确密码**才能使用；本机（`127.0.0.1`）与局域网直连访问不受影响，保证管理员始终能正常管理与修复；
+- **密码完全存储在插件本地**（`~/.dsh/plugins/dsh-mobile-remote/config.json`），只保存 `scrypt` 哈希 + 随机盐，**绝不落盘明文**，校验使用 `timingSafeEqual` 防时序攻击，登录带失败次数限制防爆破。
+
+> **关键设计：完全本地、不依赖任何中转后端。** 无论你是否使用本项目自带的 `dsh-update-server` 中转服务，还是自建其它 frp / 中转方案，密码机制都能直接使用——它对任意「远程 HTTPS 访问」生效，与中转服务解耦。
+
+---
+
+## 中转服务端（dsh-update-server）接口
+
+插件外网隧道状态使用中转服务器的**成员端**接口（无需管理员登录）：
+
+- `GET /api/tunnel/status` — 基础成员状态（名称 / 在线 / 端口 / 最后心跳）；
+- `GET /api/tunnel/stats` — **成员隧道实时统计**（本次新增，需升级中转服务端）：含基础字段，并带 **frps 实时详情** —— 今日上行 / 下行流量、当前连接数、本地转发端口、隧道启动时间。
+
+插件会**先请求 `/stats`，后端未升级时自动回退到 `/status`**，所以旧后端不会导致面板异常。
+
+> 需将以下文件部署到你的中转服务器并重启服务：`src/routes/tunnel.js`、`src/tunnel-service.js`。
+
+## 远程访问性能优化
+
+远程（外网隧道）访问比内网慢的常见根因是：DSH 首屏会同时发起大量并发请求（JS/CSS / API / WebSocket），而 frp 隧道默认的工作连接池（`poolCount`）过小，导致 frpc 反复报 `work connection pool is full, discarding`，大量连接被丢弃、排队重试，表现为首页一直转圈。
+
+本插件做了以下优化：
+
+- **frpc 连接池调大**：生成的 `frpc.toml` 为每个 `[[proxies]]` 注入 `poolCount = 20`（可用环境变量 `DSH_FRPC_POOL_COUNT` 覆盖）；
+- **服务端配套**：`dsh-update-server` 的 `deploy/frps.toml` 模板将 `transport.maxPoolCount` 调大到 `64`（需部署到中转服务器后生效），避免服务端限制客户端连接池。
 
 ---
 
@@ -109,7 +147,7 @@ dsh --profile web --patch remote-control.patch.yml
 | qrcode | `lib/qrcode.js` | 内联 MIT QR 生成器（`qrcode-generator`），零运行时依赖 |
 
 - **开关**：`POST /__dsh_remote/toggle` → 写入 / 移除 profile `cordis.patch.yml` 的 `webserver` 覆盖块 → dsh `watchUserPatches`（Cordis HMR）热重载 webserver 行重新监听。
-- **设备数**：移动端注入 JS 每 30s 心跳上报，host 维护活跃设备表（90s 过期）。
+- **设备数**：移动端注入 JS 每 30s 心跳上报，host 维护活跃设备表（90s 过期）。每次心跳会上报完整设备元数据（屏幕 / 视口 / DPR / 网络 / 当前页面 / 语言 / 平台），设置面板的设备行可展开查看。
 - **二维码**：`GET /__dsh_remote/qr?url=...` 返回 SVG。
 - **移动端适配**：`tapIndex` 注入移动端 CSS/JS，composer 输入栏窄屏换行、选择器限宽、iOS 输入框 16px 防缩放；**不破坏 DSH 原生 rail + 汉堡抽屉交互**。
 
@@ -136,7 +174,7 @@ dsh plugin --profile web add @feiyang666/dsh-mobile-remote
 
 其它 profile 同理，把 `web` 换成你的 profile 名即可（如 `dsh plugin --profile headless add ...`）。
 
-> 想用本地 tarball 测试：`dsh plugin --profile web add C:\path\to\feiyang666-dsh-mobile-remote-1.1.0.tgz`
+> 想用本地 tarball 测试：`dsh plugin --profile web add C:\path\to\feiyang666-dsh-mobile-remote-1.4.1.tgz`
 
 ### 2. 重启并验证
 
@@ -165,6 +203,11 @@ dsh plugin --profile web remove @feiyang666/dsh-mobile-remote
 | 手机能访问但显示 403 | dsh 的信任围栏：请确认本插件已安装、且以官方支持的方式启动（`--patch` / profile patch 覆盖 `webserver.host`） |
 | 设备数为 0 | 手机端页面需打开过才会心跳上报；等待几秒刷新 |
 | 二维码扫不出来 | 确认「远程控制」已开启；相机应用需支持扫码 |
+| 外网访问被全屏密码页拦住 | 这是**远程访问密码门禁**（v1.2.0+）。管理员在本机「设置 → 远程控制 → 远程访问密码」输入正确密码即可进入；忘记密码需在本机重新设置 |
+| 远程访问仍转圈很慢 | 确认中转服务器 frps 已应用 `transport.maxPoolCount = 64`（`deploy/frps.toml`），并重启 frps；重新开启一次外网访问以重建隧道（`DSH_FRPC_POOL_COUNT` 默认 20） |
+| 面板红色提示「外网隧道鉴权失败」 | frpc 的 `auth.token` 与 frps 服务端不一致。请将中转 `.env` 的 `FRP_TOKEN` 与 `/www/server/frps/frps.toml` 的 `auth.token` 改成完全相同，重启 frps 与中转服务后，关闭再重新开启外网访问 |
+| 外网隧道一直「连接中」不见好 | frpc 在断线后自动重连；点面板上的「查看 frpc 日志」看真实原因（服务器宕机 / 端口被墙 / token 不匹配） |
+| 黄色警告条提示「FRP_TOKEN 仍是占位符」 | 中转 `.env` 的 `FRP_TOKEN` 还是占位符，必须改成与 frps.toml 一致的真实值，否则隧道永远起不来（502） |
 
 ---
 

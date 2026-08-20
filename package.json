@@ -1,7 +1,7 @@
 {
   "name": "@feiyang666/dsh-mobile-remote",
-  "version": "1.1.0",
-  "description": "DeepSeek Harness mobile remote-control plugin: settings-page remote control (QR / on-off toggle / connected-device count) plus mobile-first UI polish, working over LAN without the desktop app.",
+  "version": "1.4.1",
+  "description": "DeepSeek Harness mobile remote-control plugin: LAN/external remote control (QR / on-off toggle / remote-access password gate), rich telemetry (expandable device details, system CPU/memory/load, DSH app state: version/sessions/workspaces/plugins/models), real external-tunnel status detection (frpc token / reconnect diagnostics), plus mobile-first UI polish and faster remote loading.",
   "keywords": [
     "deepseek",
     "harness",
@@ -12,7 +12,9 @@
     "qr-code",
     "responsive",
     "lan",
-    "cordis"
+    "cordis",
+    "access-password",
+    "auth"
   ],
   "license": "MIT",
   "type": "module",
@@ -60,8 +62,8 @@
   ],
   "scripts": {
     "pack:list": "npm pack --dry-run",
-    "check": "node --check lib/index.js && node --check lib/client.js && node --check lib/qrcode.js",
-    "prepublishOnly": "node --check lib/index.js && node --check lib/client.js && node --check lib/qrcode.js",
+    "check": "node --check lib/index.js && node --check lib/client.js && node --check lib/external.js && node --check lib/password.js && node --check lib/qrcode.js",
+    "prepublishOnly": "node --check lib/index.js && node --check lib/client.js && node --check lib/external.js && node --check lib/password.js && node --check lib/qrcode.js",
     "pack": "npm pack"
   },
   "peerDependencies": {
