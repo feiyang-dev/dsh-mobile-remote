@@ -149,7 +149,8 @@ dsh --profile web --patch remote-control.patch.yml
 - **开关**：`POST /__dsh_remote/toggle` → 写入 / 移除 profile `cordis.patch.yml` 的 `webserver` 覆盖块 → dsh `watchUserPatches`（Cordis HMR）热重载 webserver 行重新监听。
 - **设备数**：移动端注入 JS 每 30s 心跳上报，host 维护活跃设备表（90s 过期）。每次心跳会上报完整设备元数据（屏幕 / 视口 / DPR / 网络 / 当前页面 / 语言 / 平台），设置面板的设备行可展开查看。
 - **二维码**：`GET /__dsh_remote/qr?url=...` 返回 SVG。
-- **移动端适配**：`tapIndex` 注入移动端 CSS/JS，composer 输入栏窄屏换行、选择器限宽、iOS 输入框 16px 防缩放；**不破坏 DSH 原生 rail + 汉堡抽屉交互**。
+- **移动端适配**：`tapIndex` 注入移动端 CSS/JS，composer 输入栏窄屏换行、选择器限宽、iOS 输入框 16px 防缩放；**不破坏 DSH 原生 rail + 汉堡抽屉交互**；
+- **移动端设置页适配**（v1.4.2+）：原生设置弹窗在手机上自动变为全屏单栏——导航栏变顶部横向滚动标签、内容区占满剩余空间；同时抑制触屏上常驻的原生 Tooltip 气泡（如「停止 / 开始 / 关闭菜单栏」提示文字）。通过结构标记识别设置弹窗，**不依赖 harness 内部哈希类名**，harness 升级后无需修改插件即可直接适配。
 
 ---
 
@@ -174,7 +175,7 @@ dsh plugin --profile web add @feiyang666/dsh-mobile-remote
 
 其它 profile 同理，把 `web` 换成你的 profile 名即可（如 `dsh plugin --profile headless add ...`）。
 
-> 想用本地 tarball 测试：`dsh plugin --profile web add C:\path\to\feiyang666-dsh-mobile-remote-1.4.1.tgz`
+> 想用本地 tarball 测试：`dsh plugin --profile web add C:\path\to\feiyang666-dsh-mobile-remote-1.4.2.tgz`
 
 ### 2. 重启并验证
 

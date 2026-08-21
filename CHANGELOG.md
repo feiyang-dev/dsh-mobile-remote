@@ -1,5 +1,15 @@
 # 更新日志 / Changelog
 
+## v1.4.2 (2026-08-21)
+
+### 修复 / Fixed
+- **移动端 Tooltip 常驻屏幕**（`lib/index.js` MOBILE_CSS）：DSH 原生 Tooltip 气泡由 hover/focus 触发，触屏设备点击按钮后焦点停留、气泡一直显示在屏幕上（如「停止」「开始」「关闭菜单栏」等按钮的提示文字）。移动端直接隐藏 `[role="tooltip"]` 气泡，按钮仍保留 aria-label 无障碍名。
+- **设置页未适配移动端**（`lib/index.js` MOBILE_CSS + MOBILE_JS）：原生设置弹窗为 800px 双栏（188px 导航栏 + 内容列），手机上几乎无法使用。改为全屏单栏：
+  - 导航栏 → 顶部横向滚动胶囊标签（加大触控目标）；
+  - 内容列独占剩余空间、边距收紧，各设置 section 获得完整宽度；
+  - 用 MutationObserver 识别设置弹窗（`role=dialog` 且直子元素为 `<nav>`）打上 `data-dsh-settings` 标记，**不依赖 harness 内部哈希类名**，harness 升级后仍可直接适配。
+- **远程控制面板窄屏细节**（`lib/client.js`）：设备详情 / 外网状态行的长文本允许换行（`overflowWrap`），行内放不下时允许换行（`flexWrap`），避免手机端溢出卡片。
+
 ## v1.4.1 (2026-08-20)
 
 ### 新增 / Added
