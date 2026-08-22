@@ -1,5 +1,13 @@
 # 更新日志 / Changelog
 
+## v1.4.3 (2026-08-22)
+
+### 修复 / Fixed
+- **移动端设置页空白 + 无法上下滚动**（`lib/index.js` MOBILE_CSS）：v1.4.2 虽把设置弹窗改为全屏单栏，但面板仍是横向 `flex`（row）布局，内容列被压成 0 宽度 → 内容区整块空白；且内容列 `min-height:auto` 无法收缩，`.options` 区拿不到受限高度 → 不能滑动。本版：
+  - 面板强制 `flex-direction: column !important`，导航栏成顶部横向标签、内容列独占剩余空间；
+  - 内容列 `min-height: 0` + `overflow: hidden`，让设置选项区在手机端可正常上下滚动。
+- **内网（非安全上下文）远程连接失败**（`lib/index.js` GATE_JS）：当前 DSH 客户端多处裸调用 `crypto.randomUUID()`（RPC ID / 消息 ID / 实例令牌等），而该 Web Crypto API 仅在 HTTPS 或 localhost 存在。内网 http 直连（非安全上下文）下缺失（或存在但调用抛 `NotSupportedError`），导致连接与所有 RPC 失败，模型设置页因此报 `settings are unavailable in this browser`。本版在插件注入 `<head>` 的脚本里，用 `crypto.getRandomValues`（非安全上下文也可用）补一个 RFC 4122 v4 `crypto.randomUUID` 兜底，覆盖应用内全部调用点，内网访问 / 扫码连接恢复正常；DSH 自行修复后该兜底自动失效，无副作用。
+
 ## v1.4.2 (2026-08-21)
 
 ### 修复 / Fixed

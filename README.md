@@ -150,7 +150,7 @@ So for users, **installing is one command** — no YAML editing, no manual file 
 - **Device count**: mobile-injected JS heartbeats every 30s; the host keeps an active-device map (90s TTL). Each heartbeat now reports full device metadata (screen / viewport / DPR / network / current page / language / platform), shown in the expandable device rows of the settings panel.
 - **QR code**: `GET /__dsh_remote/qr?url=...` returns SVG.
 - **Mobile polish**: `tapIndex` injects mobile CSS/JS — composer toolbar wraps on narrow screens, selects get width-capped, iOS inputs get 16px to prevent focus zoom; **DSH's native rail + hamburger drawer interactions are untouched**;
-- **Mobile settings page** (v1.4.2+): the native settings dialog becomes a full-screen single column on phones — the nav rail turns into a horizontally scrollable tab bar and the content column fills the remaining space; persistent native tooltip bubbles (e.g. the "stop / start / close sidebar" hints that stick on touch) are suppressed. The dialog is detected structurally, **not via harness-internal hashed class names**, so the plugin keeps working after DeepSeek Harness updates without modification.
+- **Mobile settings page** (v1.4.2+): the native settings dialog becomes a full-screen single column on phones — the nav rail turns into a horizontally scrollable tab bar and the content column fills the remaining space; persistent native tooltip bubbles (e.g. the "stop / start / close sidebar" hints that stick on touch) are suppressed. The dialog is detected structurally, **not via harness-internal hashed class names**, so the plugin keeps working after DeepSeek Harness updates without modification. **v1.4.3** fixes the single-column settings layout — the panel was still a row-flex, collapsing the content column to zero width (blank content) and blocking vertical scroll; it now forces `flex-direction: column` plus `min-height: 0` so the options area actually scrolls on phones. It also adds a **`crypto.randomUUID` fallback for insecure contexts (LAN `http://`)**: current DSH clients call `crypto.randomUUID()` on the wire, which is only defined on HTTPS or localhost, so LAN direct access failed with `crypto.randomUUID is not a function` / `settings are unavailable in this browser`; the injected head script now provides an RFC 4122 v4 shim backed by `getRandomValues`.
 
 ---
 
@@ -175,7 +175,7 @@ This command does three things automatically:
 
 The same works for other profiles — replace `web` with your profile name.
 
-> Local tarball testing: `dsh plugin --profile web add C:\path\to\feiyang666-dsh-mobile-remote-1.4.2.tgz`
+> Local tarball testing: `dsh plugin --profile web add C:\path\to\feiyang666-dsh-mobile-remote-1.4.3.tgz`
 
 ### 2. Restart and verify
 

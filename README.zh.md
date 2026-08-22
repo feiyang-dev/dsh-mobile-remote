@@ -150,7 +150,7 @@ dsh --profile web --patch remote-control.patch.yml
 - **设备数**：移动端注入 JS 每 30s 心跳上报，host 维护活跃设备表（90s 过期）。每次心跳会上报完整设备元数据（屏幕 / 视口 / DPR / 网络 / 当前页面 / 语言 / 平台），设置面板的设备行可展开查看。
 - **二维码**：`GET /__dsh_remote/qr?url=...` 返回 SVG。
 - **移动端适配**：`tapIndex` 注入移动端 CSS/JS，composer 输入栏窄屏换行、选择器限宽、iOS 输入框 16px 防缩放；**不破坏 DSH 原生 rail + 汉堡抽屉交互**；
-- **移动端设置页适配**（v1.4.2+）：原生设置弹窗在手机上自动变为全屏单栏——导航栏变顶部横向滚动标签、内容区占满剩余空间；同时抑制触屏上常驻的原生 Tooltip 气泡（如「停止 / 开始 / 关闭菜单栏」提示文字）。通过结构标记识别设置弹窗，**不依赖 harness 内部哈希类名**，harness 升级后无需修改插件即可直接适配。
+- **移动端设置页适配**（v1.4.2+）：原生设置弹窗在手机上自动变为全屏单栏——导航栏变顶部横向滚动标签、内容区占满剩余空间；同时抑制触屏上常驻的原生 Tooltip 气泡（如「停止 / 开始 / 关闭菜单栏」提示文字）。通过结构标记识别设置弹窗，**不依赖 harness 内部哈希类名**，harness 升级后无需修改插件即可直接适配。**v1.4.3** 修复该单栏布局——面板原本仍是横向 `flex`，内容列被压成 0 宽度（内容空白）且无法上下滚动；现强制 `flex-direction: column` + `min-height: 0`，设置选项区在手机上可正常滚动。并新增**内网（非安全上下文）`crypto.randomUUID` 兜底**：当前 DSH 客户端在连接时直接调用 `crypto.randomUUID()`，该 Web Crypto API 仅在 HTTPS / localhost 存在，内网 http 直连会报 `crypto.randomUUID is not a function` / `settings are unavailable in this browser`；插件注入的头部脚本用 `getRandomValues` 补一个 RFC 4122 v4 实现，内网访问 / 扫码连接恢复正常。
 
 ---
 
@@ -175,7 +175,7 @@ dsh plugin --profile web add @feiyang666/dsh-mobile-remote
 
 其它 profile 同理，把 `web` 换成你的 profile 名即可（如 `dsh plugin --profile headless add ...`）。
 
-> 想用本地 tarball 测试：`dsh plugin --profile web add C:\path\to\feiyang666-dsh-mobile-remote-1.4.2.tgz`
+> 想用本地 tarball 测试：`dsh plugin --profile web add C:\path\to\feiyang666-dsh-mobile-remote-1.4.3.tgz`
 
 ### 2. 重启并验证
 
