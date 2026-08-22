@@ -1,5 +1,10 @@
 # 更新日志 / Changelog
 
+## v1.4.4 (2026-08-22)
+
+### 修复 / Fixed
+- **安装插件后 dsh 服务启动崩溃**（`cordis.patch.yml`）：bundle 补丁层 `insert` 块的 `name` 写成了无 scope 的裸包名 `dsh-mobile-remote`，而实际 npm 包名是 `@feiyang666/dsh-mobile-remote`。Cordis loader 按 `name` 去 profile 的 `node_modules` 中 import 该包时找不到（`Cannot find package 'dsh-mobile-remote'`），导致整个插件树加载失败、dsh 服务 `code=1` 退出。本版改为完整包名 `@feiyang666/dsh-mobile-remote`，与 `dsh-vault`、`dsh-usage-plugin` 等官方插件的写法保持一致。
+
 ## v1.4.3 (2026-08-22)
 
 ### 修复 / Fixed

@@ -1,6 +1,6 @@
-# dsh-mobile-remote v1.4.3
+# dsh-mobile-remote v1.4.4
 
-**DeepSeek Harness 移动端远程控制插件** —— 在 Web UI 设置页内置「远程控制」：连接二维码、一键开关、在线设备数，让手机通过局域网访问并操控电脑上的 DeepSeek Harness。本版**修复移动端设置页空白 / 无法滚动**，并新增**内网（非安全上下文）远程连接的 `crypto.randomUUID` 兜底**，让内网直连与手机扫码访问不再失败。
+**DeepSeek Harness 移动端远程控制插件** —— 在 Web UI 设置页内置「远程控制」：连接二维码、一键开关、在线设备数，让手机通过局域网访问并操控电脑上的 DeepSeek Harness。本版**修复安装插件后 dsh 服务启动崩溃**的问题。
 
 ## 安装方式
 
@@ -10,18 +10,21 @@ dsh plugin --profile web add @feiyang666/dsh-mobile-remote
 
 安装完成后**重启 dsh web 服务**，打开 `http://127.0.0.1:3080` → **设置 → 远程控制** 即可使用。
 
-## 本版更新（v1.4.3）
+## 本版更新（v1.4.4）
 
-### 🖱️ 移动端设置页：内容空白 + 无法上下滚动
+### 🐛 修复安装插件后 dsh 服务启动崩溃（必须升级）
 
-上一版已把设置弹窗改为全屏单栏，但面板仍是横向布局，导致内容列被压成 0 宽度、设置内容区整块空白；内容列也无法收缩，设置选项区不能上下滑动。本版：
+安装本插件后 dsh web 服务启动即崩溃（退出码 1），日志报：
 
-- 面板强制 `flex-direction: column`，导航栏成为顶部横向标签、内容列独占剩余空间；
-- 内容列 `min-height: 0` + `overflow: hidden`，设置选项区在手机端可正常上下滚动。
+```
+Cannot find package 'dsh-mobile-remote' imported from C:\Users\Administrator\.dsh\profiles\web\
+```
 
-### 🔐 内网远程连接：`crypto.randomUUID` 兜底
+**根因**：bundle 补丁层 `cordis.patch.yml` 中插件行的 `name` 写成了无 scope 的裸包名 `dsh-mobile-remote`，而实际 npm 包名是 `@feiyang666/dsh-mobile-remote`。Cordis loader 按 `name` 去 profile 的 `node_modules` 中 import 该包时找不到，导致整个插件树加载失败、dsh 进程退出。
 
-当前 DSH 客户端多处裸调用 `crypto.randomUUID()`，该 Web Crypto API 仅在 HTTPS 或 localhost 存在。内网 http 直连（非安全上下文）下缺失（或存在但调用即抛），导致连接与所有 RPC 失败，模型设置页因此报 `settings are unavailable in this browser`。本版在插件注入 `<head>` 的脚本里，用 `crypto.getRandomValues`（非安全上下文也可用）补一个 RFC 4122 v4 `crypto.randomUUID` 兜底，覆盖应用内全部调用点，内网访问 / 扫码连接恢复正常；DSH 自行修复后该兜底自动失效，无副作用。
+**本版修复**：`cordis.patch.yml` 的 `name` 改为完整包名 `@feiyang666/dsh-mobile-remote`，与其它官方插件保持一致。
+
+> 已安装 v1.4.3 及更早版本的用户：请先在桌面端「插件管理」中卸载本插件（或执行 `dsh plugin --profile web remove @feiyang666/dsh-mobile-remote`），服务即可恢复启动，再安装本修复版。
 
 ## 已知事项
 

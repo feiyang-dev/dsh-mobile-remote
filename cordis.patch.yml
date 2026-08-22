@@ -1,6 +1,10 @@
 # dsh-mobile-remote 插件 bundle 补丁层。
-# 通过 `dsh plugin --profile web add dsh-mobile-remote`（或桌面端「插件管理 → 自定义安装」）
+# 通过 `dsh plugin --profile web add @feiyang666/dsh-mobile-remote`（或桌面端「插件管理 → 自定义安装」）
 # 安装后，本文件会在 dsh web 启动时被挂载，把下面的插件行插入到宿主组合中。
+#
+# 注意：name 必须是完整的 npm 包名（含 scope）。Cordis loader 会按 name 去 profile 的
+# node_modules 里 import 该包，若写成无 scope 的裸包名会导致整个插件树加载失败
+# （Cannot find package 'dsh-mobile-remote'），dsh 服务启动即崩溃（code=1）。
 #
 # 插件是 host + client 双面插件：
 #   - host 侧（lib/index.js，inject [webServer]）：
@@ -11,5 +15,5 @@
 #       * 由 dsh-client-modules 扫描加载，注册「设置 → 远程控制」section。
 - insert:
     - id: dsh-mobile-remote
-      name: 'dsh-mobile-remote'
+      name: '@feiyang666/dsh-mobile-remote'
       inject: [webServer]
