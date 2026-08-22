@@ -1,6 +1,6 @@
 {
   "name": "@feiyang666/dsh-mobile-remote",
-  "version": "1.4.5",
+  "version": "1.45",
   "description": "DeepSeek Harness mobile remote-control plugin: LAN/external remote control (QR / on-off toggle / remote-access password gate), rich telemetry (expandable device details, system CPU/memory/load, DSH app state: version/sessions/workspaces/plugins/models), real external-tunnel status detection (frpc token / reconnect diagnostics), plus mobile-first UI polish and faster remote loading.",
   "keywords": [
     "deepseek",

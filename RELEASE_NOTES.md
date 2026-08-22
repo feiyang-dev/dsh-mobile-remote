@@ -1,6 +1,6 @@
-# dsh-mobile-remote v1.4.5
+# dsh-mobile-remote v1.45
 
-**DeepSeek Harness 移动端远程控制插件** —— 在 Web UI 设置页内置「远程控制」：连接二维码、一键开关、在线设备数，让手机通过局域网访问并操控电脑上的 DeepSeek Harness。本版**修复客户端插件加载失败**（`client-modules: loaded without registering`）的问题。
+**DeepSeek Harness 移动端远程控制插件** —— 在 Web UI 设置页内置「远程控制」：连接二维码、一键开关、在线设备数，让手机通过局域网访问并操控电脑上的 DeepSeek Harness。本版**修复启用远程控制后写坏 profile 的 `cordis.patch.yml`（服务启动即崩溃）**，并继承 v1.4.5 / v1.4.4 的完整包名修复。
 
 ## 安装方式
 
@@ -10,7 +10,20 @@ dsh plugin --profile web add @feiyang666/dsh-mobile-remote
 
 安装完成后**重启 dsh web 服务**，打开 `http://127.0.0.1:3080` → **设置 → 远程控制** 即可使用。
 
-## 本版更新（v1.4.5）
+## 本版更新（v1.45）
+
+### 🐛 修复启用远程控制后写坏 profile 的 cordis.patch.yml（服务启动即崩溃）
+
+在设置页开启「远程控制」并重启服务后，dsh 启动即崩溃，日志报：
+
+```
+Error: dsh: failed to parse overlay C:\Users\Administrator\.dsh\profiles\web\cordis.patch.yml:
+YAMLException: end of the stream or a document separator is expected (7:1)
+```
+
+**根因**：官方模板生成的 profile patch 文件内容是 `# user patch layer for this profile\n[]`（空数组占位）。插件开启远程控制 / 外网隧道时，往文件**末尾追加** `- id: webserver` 列表块，但未先移除 `[]` 占位行，导致同一文件出现两个 YAML 文档且无 `---` 分隔符，js-yaml 无法解析。
+
+**本版修复**：写入前过滤掉裸 `[]` 占位行（`setPatchEnabled` / `ensureTrustedHost`），patch 文件始终是单一 YAML 数组，已用官方 `entryListSchema` 验证可解析。
 
 ### 🐛 修复客户端插件加载失败（client-modules: loaded without registering）
 
