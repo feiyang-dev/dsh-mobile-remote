@@ -1,6 +1,6 @@
 # 更新日志 / Changelog
 
-## v1.45 (2026-08-22)
+## v1.4.6 (2026-08-22)
 
 ### 修复 / Fixed
 - **启用远程控制后写坏 profile 的 `cordis.patch.yml`，服务启动即崩溃**（`lib/index.js` 的 `setPatchEnabled`、`lib/external.js` 的 `ensureTrustedHost`）：官方模板生成的 profile patch 文件内容是 `# user patch layer for this profile\n[]`（空数组占位），插件往文件**末尾追加** `- id: webserver` 等列表块时未先移除该 `[]` 行，导致同一文件出现两个 YAML 文档且无 `---` 分隔符，js-yaml 解析报 `YAMLException: end of the stream or a document separator is expected`，dsh 服务启动即崩溃。本版在写入前过滤掉裸 `[]` 占位行，patch 文件始终是单一文档，已用官方 `entryListSchema` 验证可解析。

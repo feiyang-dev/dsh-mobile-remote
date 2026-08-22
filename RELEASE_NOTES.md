@@ -1,4 +1,4 @@
-# dsh-mobile-remote v1.45
+# dsh-mobile-remote v1.4.6
 
 **DeepSeek Harness 移动端远程控制插件** —— 在 Web UI 设置页内置「远程控制」：连接二维码、一键开关、在线设备数，让手机通过局域网访问并操控电脑上的 DeepSeek Harness。本版**修复启用远程控制后写坏 profile 的 `cordis.patch.yml`（服务启动即崩溃）**，并继承 v1.4.5 / v1.4.4 的完整包名修复。
 
@@ -10,7 +10,7 @@ dsh plugin --profile web add @feiyang666/dsh-mobile-remote
 
 安装完成后**重启 dsh web 服务**，打开 `http://127.0.0.1:3080` → **设置 → 远程控制** 即可使用。
 
-## 本版更新（v1.45）
+## 本版更新（v1.4.6）
 
 ### 🐛 修复启用远程控制后写坏 profile 的 cordis.patch.yml（服务启动即崩溃）
 
