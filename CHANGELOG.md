@@ -1,5 +1,10 @@
 # 更新日志 / Changelog
 
+## v1.4.5 (2026-08-22)
+
+### 修复 / Fixed
+- **客户端插件加载失败**（`lib/client.js`）：`window.__ModuleLoader__.load` 的 `id` 写成了无 scope 的裸包名 `dsh-mobile-remote`，而 client-modules 按 loader entry 的完整包名 `@feiyang666/dsh-mobile-remote` 校验注册，导致报 `loaded without registering "@feiyang666/dsh-mobile-remote"`、客户端插件无法加载。本版改为完整包名，与 `dsh-vault`、`dsh-usage-plugin` 的 client bundle 写法一致。
+
 ## v1.4.4 (2026-08-22)
 
 ### 修复 / Fixed
