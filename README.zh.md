@@ -20,6 +20,7 @@
 
 `dsh-mobile-remote` 是 DeepSeek Harness 生态的**移动端远程控制插件**（DSH plugin，Host + Client 双面一体包）。装好后在 WebUI **设置 → 远程控制** 出现一个管理面板：
 
+- **移动端上传图片**（v1.5.0）：composer 工具行 **+ 加号旁新增「上传图片」按钮**，手机直接选图（系统相册 / 文件选择器）即可让 DeepSeek 识图模型识别——格式 / 数量 / 大小预检查、缩略图预览、随消息上传全部复用 DSH 原生链路，桌面端不受影响；
 - **连接二维码**：自动生成 `http://<局域网IP>:<端口>` 的二维码，手机相机 / 浏览器扫码即连；
 - **开启 / 关闭开关**：一键切换 webserver 监听地址（`0.0.0.0` ↔ `127.0.0.1`），经 dsh 官方 HMR 热重载**无需重启服务**；
 - **当前连接的设备数量**：移动端心跳上报，实时统计在线设备数；
@@ -149,7 +150,7 @@ dsh --profile web --patch remote-control.patch.yml
 - **开关**：`POST /__dsh_remote/toggle` → 写入 / 移除 profile `cordis.patch.yml` 的 `webserver` 覆盖块 → dsh `watchUserPatches`（Cordis HMR）热重载 webserver 行重新监听。
 - **设备数**：移动端注入 JS 每 30s 心跳上报，host 维护活跃设备表（90s 过期）。每次心跳会上报完整设备元数据（屏幕 / 视口 / DPR / 网络 / 当前页面 / 语言 / 平台），设置面板的设备行可展开查看。
 - **二维码**：`GET /__dsh_remote/qr?url=...` 返回 SVG。
-- **移动端适配**：`tapIndex` 注入移动端 CSS/JS，composer 输入栏窄屏换行、选择器限宽、iOS 输入框 16px 防缩放；**不破坏 DSH 原生 rail + 汉堡抽屉交互**；
+- **移动端适配**：`tapIndex` 注入移动端 CSS/JS，composer 输入栏窄屏换行、选择器限宽、iOS 输入框 16px 防缩放、**加号旁注入「上传图片」按钮**（文件选择器选图 → 复用 DSH 原生 paste/drop intake 链路）；**不破坏 DSH 原生 rail + 汉堡抽屉交互**；
 - **移动端设置页适配**（v1.4.2+）：原生设置弹窗在手机上自动变为全屏单栏——导航栏变顶部横向滚动标签、内容区占满剩余空间；同时抑制触屏上常驻的原生 Tooltip 气泡（如「停止 / 开始 / 关闭菜单栏」提示文字）。通过结构标记识别设置弹窗，**不依赖 harness 内部哈希类名**，harness 升级后无需修改插件即可直接适配。**v1.4.3** 修复该单栏布局——面板原本仍是横向 `flex`，内容列被压成 0 宽度（内容空白）且无法上下滚动；现强制 `flex-direction: column` + `min-height: 0`，设置选项区在手机上可正常滚动。并新增**内网（非安全上下文）`crypto.randomUUID` 兜底**：当前 DSH 客户端在连接时直接调用 `crypto.randomUUID()`，该 Web Crypto API 仅在 HTTPS / localhost 存在，内网 http 直连会报 `crypto.randomUUID is not a function` / `settings are unavailable in this browser`；插件注入的头部脚本用 `getRandomValues` 补一个 RFC 4122 v4 实现，内网访问 / 扫码连接恢复正常。
 
 ---

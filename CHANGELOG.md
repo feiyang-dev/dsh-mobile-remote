@@ -1,6 +1,44 @@
 # 更新日志 / Changelog
 
-## v1.4.6 (2026-08-22)
+## v1.5.4 (2026-08-23)
+
+### 新增 / New
+- **移动端「上传中 / 发送中」状态指示**（`lib/index.js` MOBILE_CSS + MOBILE_JS）：选择图片后发送，DSH 要先 `serializeImages`（读取图片转 base64，移动端大图可能数秒）再 `prompt`，期间会话列表不会立刻出现新消息，用户容易误以为没发出去。本版监听 composer textarea 的 `data-phase`，进入 `submitting` / `adjudicating` 阶段时在 composer 上方显示带 spinner 的浮层提示：有附件图片时显示「正在上传图片并发送…」，纯文本时显示「正在发送…」；phase 恢复后自动隐藏。不依赖 DSH 内部 API，只读 DOM 属性。
+
+## v1.5.3 (2026-08-23)
+
+### 修复 / Fixed
+- **图片上传从未成功过的根因**（`lib/index.js` MOBILE_JS）：图片类型校验正则写为 `/^image\//i`，但 MOBILE_JS 是注入到 `<script>` 的 JS 模板字符串，模板字符串中 `\/` 属于非转义序列，反斜杠会被丢弃，注入后变成 `/^image//i`，被解析成「正则 `/^image/` 除以 `i.test(...)`」，运行时报 `TypeError: i.test is not a function`，导致从 v1.5.0 起手机端选图后输入框一直没有缩略图。本版改用 `indexOf('image/')` 做类型判断，彻底绕开正则转义问题。
+
+## v1.5.2 (2026-08-23)
+
+### 修复 / Fixed
+- **图片 intake 仍失败（React 事件处理器崩溃）**（`lib/index.js` MOBILE_JS）：v1.5.1 的模拟 `clipboardData` 缺少 DSH `onPaste` 会调用的 `getData()`，派发 paste 时抛 `TypeError` 导致 React 事件处理器崩溃、输入框不显示缩略图。本版为模拟 `clipboardData` 补齐 `getData` / `setData` / `clearData`（`getData` 返回空文本，图片走文件分支），paste 链路不再抛错。
+- **模型选择弹窗位置**（`lib/index.js` MOBILE_CSS）：底部抽屉底部边距由 8px 上移到 24px，避免贴屏太靠下。
+
+## v1.5.1 (2026-08-23)
+
+### 修复 / Fixed
+- **手机端仍无法选择图片**（`lib/index.js` MOBILE_JS）：v1.5.0 的 intake 依赖 `new DataTransfer()` 构造器，iOS Safari 上构造出的 `DataTransfer` 添加文件后 `files` 返回空 FileList、`item.getAsFile()` 可能返回 null，导致「当前浏览器不支持直接上传 / 图片未添加上」。本版改为**用普通 JS 对象模拟 `clipboardData` / `dataTransfer` 接口**（DSH 的 `onPaste` 只读 `clipboardData.items` 的 `kind` / `getAsFile()`，`onDrop` 只读 `dataTransfer.types` / `.files`，模拟对象即可满足），彻底绕开 DataTransfer / ClipboardEvent 构造器兼容问题；并**优先派发 `paste`**（React 合成事件，兼容性最好）、`drop` 作兜底；隐藏文件选择器改为**等 `document.body` 就绪后再挂载**，避免部分 iOS WebView 拒绝 `.click()` 打开系统相册。
+- **移动端模型选择弹窗遮挡左侧工具区**（`lib/index.js` MOBILE_CSS + MOBILE_JS）：ModelSelect 菜单为绝对定位浮层（`right: 0`、宽 240px），在窄屏上从右侧锚点向左展开，把 composer 左侧的 + / 上传图片等按钮盖住。本版将带 `aria-label` 的 `[role=menu]`（模型选择菜单）在移动端改为**底部抽屉（bottom sheet）**：`position: fixed` 贴底、左右留 8px、宽度自适应屏幕、`max-height: 62vh` 内部滚动，不再从锚点向左侧/上方展开遮挡左侧内容；权限选择菜单保持原有浮层 + 水平钳制（`mrClampMenus` 对 fixed 菜单跳过平移）。
+
+## v1.5.0 (2026-08-22)
+
+### 新增 / Added
+- **移动端 composer 上传图片入口**（`lib/index.js` MOBILE_JS + MOBILE_CSS）：DSH 桌面端原生支持图片消息（粘贴 / 拖放，含格式 / 数量 / 大小预检查、缩略图 rail、随消息上传），但移动端没有「选择图片」入口（工具行的 + 按钮只打开命令菜单）。本版在移动端 composer 工具行、+ 加号按钮旁注入一个「上传图片」按钮：
+  - 点击唤起手机系统相册 / 文件选择器（`<input type="file" accept="image/*" multiple>`）；
+  - 选中后把 `File` 装入 `DataTransfer`，向输入框派发 `paste` 事件，DSH 原生 `onPaste` 的 `intakeImages` 自动接管（预检查、缩略图、随消息发送）；浏览器不支持构造 `ClipboardEvent` 时自动回退为向 `document` 派发 `drop` 事件；
+  - **不依赖 DSH 内部 API**，harness 升级后只要 paste / drop 链路仍在即可正常工作；
+  - 按钮禁用态跟随输入框（session 移除 / 锁定 / 提交中自动置灰），选完文件自动重置可重复选图。
+- **移动端图片体验配套优化**（`lib/index.js` MOBILE_CSS）：
+  - 缩略图 rail 的删除按钮触控目标从 18px 加大到 24px（结构选择器定位，不依赖哈希类名）；
+  - 自备极简提示气泡（`#dsh-mr-toast`，2.4s 淡入淡出），用于选图失败 / 浏览器不支持时的友好提示，不动 DSH 原生 Toast。
+
+### 修复 / Fixed
+- **选图后输入框看不到图片**（`lib/index.js` MOBILE_JS）：原先依赖「构造 `ClipboardEvent` / `DragEvent` 并携带 `DataTransfer`」派发 paste 事件，不同浏览器对该 API 的支持不一致（尤其 iOS Safari 的 `new DataTransfer()` 及事件构造器）。现改为**最通用的 `new Event()` + 手动挂载 `dataTransfer` / `clipboardData` 属性**派发，且**优先派发 `drop` 到 `document`**（DSH 的 onDrop 是原生监听器，最可靠），`paste` 到 textarea（React 合成事件）作兜底；成功与否以「缩略图是否真的出现在 rail」为准（而非 `defaultPrevented`，锁定 / 提交中 DSH 也会 preventDefault），全部失败才提示，安卓 / 桌面浏览器均可正常选图。
+- **权限选择弹窗未出现在按钮正上方**（`lib/index.js` MOBILE_CSS + MOBILE_JS）：DSH 的 `Menu`（PermissionSelect）是绝对定位浮层（`left: 0`）且无 viewport 钳制，锚点在工具行左区时菜单向右展开容易溢出屏幕右侧。移动端新增 `[role="menu"]` 宽度钳制（`max-width: calc(100vw - 16px)`），并在菜单出现时用 `translateX` 把越界的菜单平移回视口内。
+- **模型选择弹窗向左偏、信息显示不全**（`lib/index.js` MOBILE_CSS + MOBILE_JS）：ModelSelect 菜单 `right: 0` 对齐锚点右缘，锚点靠左时菜单左端超出屏幕左侧。同上由 `mrClampMenus` 统一钳制水平位置，保证菜单完整落在视口内。
+
 
 ### 修复 / Fixed
 - **启用远程控制后写坏 profile 的 `cordis.patch.yml`，服务启动即崩溃**（`lib/index.js` 的 `setPatchEnabled`、`lib/external.js` 的 `ensureTrustedHost`）：官方模板生成的 profile patch 文件内容是 `# user patch layer for this profile\n[]`（空数组占位），插件往文件**末尾追加** `- id: webserver` 等列表块时未先移除该 `[]` 行，导致同一文件出现两个 YAML 文档且无 `---` 分隔符，js-yaml 解析报 `YAMLException: end of the stream or a document separator is expected`，dsh 服务启动即崩溃。本版在写入前过滤掉裸 `[]` 占位行，patch 文件始终是单一文档，已用官方 `entryListSchema` 验证可解析。
