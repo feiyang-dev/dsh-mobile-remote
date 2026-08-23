@@ -1,5 +1,16 @@
 # 更新日志 / Changelog
 
+## v1.6.1 (2026-08-23)
+
+### 修复 / Fixed
+
+- **用量插件等宽表在移动端被压成逐字竖排（可靠兜底）**（`lib/index.js` MOBILE_CSS）：`dsh-usage-plugin` 的「消耗表 / 消耗明细 / 每日统计」等 9–11 列宽表依赖其运行时注入的全局样式（`.dsh-usage-table{min-width:720px}` + ≤540px 折叠中间列）来避免列被压到极限宽度；若该样式因 CSP / 加载时序未生效，手机窄屏下每列会被压到约 1 字符宽、内容逐字竖排、无法阅读。本插件（dsh-mobile-remote）的样式是**随 index.html 一起由服务端下发、必定生效**，故在 `<style id="dsh-mobile-remote-css">` 中新增兜底：`html[data-dsh-mobile] .dsh-usage-table { min-width: 720px !important; }`，并在 ≤540px 时对带 `collapse-mobile` 的宽表隐藏第 4 列至倒数第 2 列、只保留前 3 个主标识列与最后合计列。这样即使旧版用量插件未更新或其样式表注入失败，移动端宽表也始终可横向滑动阅读、关键数据一屏看全。价格表等窄表（无 `collapse-mobile`）不折叠，保留横向滚动。
+
+## v1.6.0 (2026-08-23)
+
+### 新增 / New
+- **SSE 实时推送端点**（`lib/index.js`）：新增 `GET /__dsh_remote/events` 事件流端点（受远程密码门禁保护），设备心跳上报 / 远程开关切换 / 外网隧道启动停止等状态变化时向订阅者推送 `data: {"type":"changed","at":<时间戳>}`。桌面端数据中心等客户端订阅该流即可即时感知远程设备与隧道状态变化，无需轮询。无订阅者时零开销，插件独立使用不受影响。
+
 ## v1.5.4 (2026-08-23)
 
 ### 新增 / New
