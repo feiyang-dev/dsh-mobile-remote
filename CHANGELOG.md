@@ -1,5 +1,18 @@
 # 更新日志 / Changelog
 
+## v1.7.0 (2026-08-28)
+
+### 新增 / New
+- **中转服务器 WS 状态推送客户端**（`lib/ws-client.js` + `lib/external.js`）：外网隧道开启后，插件端改为通过 **WebSocket 长连接**（`/api/tunnel/ws?bindCode=…`）接收中转服务器的隧道状态实时推送，**替代原来每 5s 的 HTTP 轮询** `/api/tunnel/stats`，中转服务器请求压力降为 0（服务器资源集中用于 frp 隧道中转）。
+  - 指数退避自动重连（2s → 4s → … → 60s 封顶），断线自动恢复；
+  - `ws` 依赖缺失（如离线安装未带依赖）时自动降级：WS 客户端 no-op，心跳与状态查询回退 HTTP 低频兜底，**功能不中断**；
+  - 停止外网 / 插件卸载时主动断开，不再自动重连。
+- **心跳优先经 WS 长连接发送**（`lib/external.js` `sendHeartbeat`）：WS 已连上时心跳直接经长连接送达（零 HTTP 请求），未连上才回退 HTTP `/api/tunnel/heartbeat`。
+- **状态查询 60s 节流缓存**（`lib/index.js` `queryServerStatus`）：即使移动端前端每 5s 轮询本机 `/status`，也不会高频打中转服务器；前端 `/status` 优先读 WS 推送缓存，仅在从未收到推送（ws 缺失 / WS 未建立）时才回退 HTTP 低频查询。
+
+### 变更 / Changed
+- 新增运行时依赖 `ws`（`^8.18.0`）；`npm run check` / `prepublishOnly` 增加 `lib/ws-client.js` 语法检查。
+
 ## v1.6.1 (2026-08-23)
 
 ### 修复 / Fixed
