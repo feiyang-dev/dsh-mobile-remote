@@ -1,5 +1,20 @@
 # 更新日志 / Changelog
 
+## v1.7.1 (2026-08-29)
+
+### 新增 / New
+- **外网访问面板显示数据通道状态**（`lib/index.js` + `lib/client.js`）：`/status` 新增 `external.ws` 字段（`available` = ws 依赖是否可用 / `connected` = WS 长连接是否建立 / `source` = 当前数据来源 `ws` | `http` | `none` / `lastPushAt` = 最后推送时刻），设置页「外网访问」卡片新增「数据通道」行徽标，让用户一眼看清当前是 **WS 实时推送**（绿色）、**HTTP 兜底（退让模式）**（未安装 ws 依赖）、**WS 已连接等待推送**、**WS 已断开 / 重连中**（含最后推送时间）中的哪一种。
+- **运行时长本地每秒刷新**（`lib/client.js`）：`runtimeInfo()` 增加采集时刻 `at`，前端新增 `LiveDuration` 组件——基于「采样秒数 + 采集时刻」在浏览器本地每秒累加，让「运行时长 / 开机时长 / 隧道已运行」等秒级数字每秒跳动（秒表效果），不再依赖 5s 的 `/status` 轮询刷新（此前数字每 5s 才跳一次且跳幅不连续）。
+- **远程访问密码界面美化**（`lib/index.js` GATE_CSS / GATE_JS）：按 DeepSeek 官网风格重做门禁界面——深蓝黑背景 + 细微光斑纹理、全套圆角元素（卡片 / 胶囊 logo 条 / 输入框 / 按钮 / 服务信息框）、DSH FishLogo + 「deepseek | Harness」文字 logo 组合（复刻官网）；`/__dsh_remote/auth-status` 新增 `service` 摘要（服务名 / 本机主机名 / DSH 版本 / 当前访问域名），门禁界面据此展示"访问地址 / 提供服务者 / 版本"信息。
+- **输入密码后的加载动画**（`lib/index.js` GATE_JS）：点击「进入」立即显示按钮内旋转 spinner + 文案切换为「正在进入…」，并禁用防重复提交，用户明确知道系统正在处理；验证失败自动恢复。
+- **清除 / 修改密码需验证当前密码**（`lib/index.js` + `lib/client.js`）：`/__dsh_remote/set-password` 在已设置密码后，修改或清除必须携带 `currentPassword` 并通过校验，防止门禁被未授权一键关闭；设置页新增「当前密码」输入框引导。
+
+### 修复 / Fixed
+- **WS 推送一直显示"等待推送"**（`lib/ws-client.js`）：兼容中转服务器 `send()` 对已序列化 payload 二次 `JSON.stringify` 造成的双重序列化消息（`"{\"type\":...}"`），首层解析得到 JSON 字符串时二次解析，插件端恢复正常接收 `tunnel:status` 推送（中转服务器 `dsh-update-server` 的 `send()` 也已修复不再重复序列化，需部署后生效）。
+
+### 变更 / Changed
+- 无 API 破坏；旧版 host / 新版 client 混用时，缺少 `at` / `ws` / `service` 字段会自动降级为原行为。
+
 ## v1.7.0 (2026-08-28)
 
 ### 新增 / New
