@@ -91,6 +91,37 @@ dsh plugin --profile web add @feiyang666/dsh-mobile-remote
 
 装完重启 dsh web 服务即可。
 
+### 方式三：从本地 tarball 安装（未发布 / 离线 / 自测用）
+
+当插件尚未发布到 npm（或 npm 发布受 2FA、暂存审批阻塞），可直接从本地源码安装：
+
+```bash
+# 在插件仓库根目录执行：自动 npm pack 并装进指定 profile（默认 desktop）
+node scripts/install-local.mjs              # 装到 desktop
+node scripts/install-local.mjs desktop web   # 装到多个 profile
+```
+
+脚本会：打包 → 按 profile 的包管理器安装（有 `pnpm-workspace.yaml` 用 pnpm，否则用 npm）
+→ 把包名注册进 `dsh.profile.bundles` → 回读校验版本与关键文件，避免「假成功」。
+
+> 也可在桌面端「安装插件」里直接选择本地 `.tgz` 文件，效果等价。
+>
+> 安装后 profile 的 `dependencies` 会写成 `file:...tgz`。这是有意为之：
+> 在插件发布到 npm 之前，依赖若写成 `^1.7.1` 之类的范围，后续 `npm install`
+> 会从 registry **降级**到旧版本。
+
+### 开发期快速热同步（改代码后免打包）
+
+只改前端 `lib/client.js` 时，可用 `sync-to-profile.mjs` 直接覆盖已装目录，刷新浏览器即生效：
+
+```bash
+node sync-to-profile.mjs                 # 默认 profile: web
+DSH_PROFILE=desktop node sync-to-profile.mjs
+```
+
+注意：`lib/index.js` / `lib/external.js` / `lib/patch.js` 属 host 侧代码，有模块缓存，
+**必须重启 dsh 服务**才生效。
+
 ---
 
 ## 使用步骤

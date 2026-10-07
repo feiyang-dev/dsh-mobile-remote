@@ -91,6 +91,41 @@ dsh plugin --profile web add @feiyang666/dsh-mobile-remote
 
 Restart the dsh web service to activate.
 
+### Option 3: Install from a local tarball (unpublished / offline / self-testing)
+
+When the plugin is not on npm yet (or the npm publish is blocked by 2FA / staged
+approval), install straight from local source:
+
+```bash
+# Run in the plugin repo root: packs and installs into the given profile(s)
+node scripts/install-local.mjs              # install into desktop
+node scripts/install-local.mjs desktop web   # install into several profiles
+```
+
+The script packs, installs with the profile's own package manager (pnpm when a
+`pnpm-workspace.yaml` exists, otherwise npm), registers the bundle name in
+`dsh.profile.bundles`, then reads back the version and key files so a silent
+"fake success" cannot happen.
+
+> You can also pick a local `.tgz` from the desktop app's "Install plugin" dialog.
+>
+> After installing, the profile's `dependencies` records `file:...tgz`. That is
+> intentional: until the plugin is published, a range such as `^1.7.1` would make a
+> later `npm install` **downgrade** to an older registry version.
+
+### Fast hot-sync during development (skip packing)
+
+For front-end-only changes (`lib/client.js`), `sync-to-profile.mjs` copies files
+into the installed directory; a browser refresh is enough:
+
+```bash
+node sync-to-profile.mjs                 # default profile: web
+DSH_PROFILE=desktop node sync-to-profile.mjs
+```
+
+Note: `lib/index.js`, `lib/external.js` and `lib/patch.js` are host-side code with a
+module cache — **restart the dsh service** for those to take effect.
+
 ---
 
 ## Usage

@@ -19,7 +19,7 @@
 import { homedir } from 'node:os'
 import { join, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { existsSync, mkdirSync, copyFileSync, readdirSync } from 'node:fs'
+import { existsSync, mkdirSync, copyFileSync, readdirSync, readFileSync } from 'node:fs'
 
 const here = dirname(fileURLToPath(import.meta.url))
 const profile = process.env.DSH_PROFILE || 'web'
@@ -33,24 +33,45 @@ if (!existsSync(target)) {
 }
 
 // 需要同步的文件：lib 下全部 JS + patch + manifest。
-const libFiles = readdirSync(join(here, 'lib')).filter((f) => f.endsWith('.js'))
+// 关键：必须以脚本自身所在目录（here）为基准。若从别处误调用而 here 解析异常，
+// 这里必须显式报错——否则会「一个文件都没同步却打印 ✓」造成假成功（曾踩过）。
+const libDir = join(here, 'lib')
+if (!existsSync(libDir)) {
+  console.error(`[同步失败] 找不到源码 lib 目录：${libDir}`)
+  console.error('请用脚本所在的仓库目录运行，例如：node <仓库路径>/sync-to-profile.mjs')
+  process.exit(1)
+}
+const libFiles = readdirSync(libDir).filter((f) => f.endsWith('.js'))
+if (libFiles.length === 0) {
+  console.error(`[同步失败] ${libDir} 下没有任何 .js 文件，疑似路径不对。`)
+  process.exit(1)
+}
 const FILES = [...libFiles.map((f) => join('lib', f)), 'cordis.patch.yml', 'package.json']
 
 let copied = 0
+const missing = []
 for (const rel of FILES) {
   const src = join(here, rel)
   if (!existsSync(src)) {
     console.warn(`  [跳过] 本地不存在：${rel}`)
+    missing.push(rel)
     continue
   }
   const dst = join(target, rel)
   mkdirSync(dirname(dst), { recursive: true })
   copyFileSync(src, dst)
-  console.log(`  ✓ ${rel}`)
-  copied += 1
+  // 回读校验：确认真的写进去了（大小一致），杜绝假成功。
+  const same = readFileSync(src).length === readFileSync(dst).length
+  console.log(`  ${same ? '✓' : '✗'} ${rel}`)
+  if (same) copied += 1
+  else missing.push(rel)
 }
 
-console.log(`\n已同步 ${copied} 个文件到：${target}`)
+console.log(`\n已同步 ${copied}/${FILES.length} 个文件到：${target}`)
+if (missing.length) {
+  console.error(`[警告] 以下文件未成功同步：${missing.join(', ')}`)
+  process.exit(1)
+}
 console.log('')
 console.log('接下来按改动范围处理：')
 console.log('  1. 只改了 lib/client.js（前端 UI）→ 直接刷新浏览器页面即可生效，无需重启。')
