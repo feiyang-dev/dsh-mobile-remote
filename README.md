@@ -1,6 +1,6 @@
 <div align="center">
 
-# DeepSeek Harness Mobile Remote Control (dsh-mobile-remote) 📱
+# DeepSeek Harness Mobile Remote Control (dsh-mobile-remote)
 
 **English** · [简体中文](./README.zh.md)
 
@@ -22,6 +22,7 @@
 
 - **Mobile image upload** (v1.5.0): a new **"Upload image" button next to the + in the composer toolbar** lets phone users pick photos (system gallery / file picker) for DeepSeek's vision models — format/count/size pre-checks, thumbnail rail, and send-time upload all reuse DSH's native pipeline; the desktop UI is untouched.
 - **Connection QR code**: auto-generates a QR for `http://<lan-ip>:<port>` — scan it with your phone's camera / browser to connect.
+- **Bare-URL direct access with auto sign-in** (v1.8.0): just open `http://192.168.x.x:3080` (no token) and it enters automatically — the server transparently performs the new dsh browser-session handshake (`dsh >= 0.1.2-rc.1`); older dsh versions keep their original behavior.
 - **On / Off toggle**: switches the webserver listen address (`0.0.0.0` ↔ `127.0.0.1`) with one click. Applied via dsh's official HMR hot-reload — **no service restart needed**.
 - **Connected device count**: mobile heartbeats report online devices in real time.
 - **Remote access password gate** (v1.2.0+): set a password locally; external-tunnel visitors must enter it before the page loads — local/LAN access stays password-free.
@@ -201,6 +202,7 @@ Then restart the app.
 | Symptom | Cause / Fix |
 | --- | --- |
 | No "Remote Control" panel in Settings | Plugin not activated. Check the `cordis.patch.yml` row exists with the right `name`; restart and hard-refresh |
+| Phone opening the bare URL shows "authentication required" | Running a pre-v1.8.0 plugin, or the server hasn't loaded this plugin's `/` takeover. Install v1.8.0+ and **restart the dsh web service** (on old dsh without auth this plugin falls back to its previous behavior) |
 | Phone still can't connect after toggling ON | Same Wi-Fi? Firewall allowing port 3080? Accessing the LAN IP (not `127.0.0.1`)? |
 | Phone connects but shows 403 | dsh's trust fence: make sure the plugin is installed and dsh is started the supported way (`--patch` / profile patch overriding `webserver.host`) |
 | Device count stays 0 | The phone page must be opened once to start heartbeat; wait a few seconds and refresh |

@@ -1,5 +1,77 @@
 # 更新日志 / Changelog
 
+## v1.8.1 (2026-10-07)
+
+### 修复 / Fixed
+
+- **密钥（launch token）没被携带，手机 / 外网打开链接即 401**（`lib/index.js`）：这是本版最关键的修复。
+  - **根因**：`withAuthUrl()` 只用严格模式 `ctx.get('connection')` 取宿主服务。cordis 的
+    `ctx.get(name)` 默认 `strict=true`，当插件 fiber 未把 `connection` 列入 `inject` 时可能取不到，
+    函数便静默回退成「裸地址」——于是 `url` / `lanUrls` / `external.url` 全都不带 `?token=`，
+    手机扫码后落到官方 401「dsh web authentication required」。
+  - 新增 `resolveConnection()`：严格模式 → 非严格 `ctx.get('connection', false)` → `ctx.connection`
+    三级回退；新增 `resolveBrowserAuth()`：`conn.browserAuth` 不可见时直接复用
+    `HostConnectionService`（它本身就是 `BrowserAuth` 的委托层，具备 `authorizeIndex` /
+    `authenticatedUrl` / `isAuthenticated`）。
+- **外网经反代时协议不一致导致 token 在跳转中丢失**（`lib/index.js`）：裸地址自动登录原本生成
+  `http://<host>/?token=…` 绝对地址。经 nginx / frp 反代时本进程只看到明文 HTTP，发出的 http:// 会被
+  反代 301 回 https，且 token 在跨协议跳转中被丢掉，握手永远完不成。现改为**相对地址跳转**
+  （`Location: /?token=…`），由浏览器按当前协议与 authority 自行解析，http / https / 反代子路径全部正确；
+  同时不再解析重编码 token，直接透传原始 query，避免 base64url 的编码歧义。
+- **外网隧道指向过期端口，导致 502 Bad Gateway**（`lib/external.js`）：`autoRestoreExternal()`
+  把持久化的 `localPort`（旧值如 3080）当显式端口传给 `startExternal()`，覆盖了当前真实端口，
+  frpc 于是转发到无人监听的端口（日志：`connect to local service 127.0.0.1:3080 ... refused`）。
+  现在一律以**当前真实监听端口**为准，并在写 `frpc.toml` 前校验代理 `localPort` 是否与之一致，不一致直接中止并报错。
+- **`connection.trustedHosts` 从未真正生效，手机 / 外网功能全 403**（`lib/patch.js`、`lib/external.js`）：
+  旧实现写的是 `trustedHosts: !!js "['域名', ...ctx.webRuntime.trustedHosts]"`，但 dsh 0.1.7 / 0.2.x 的
+  `webStartup` 服务**并不存在 `webRuntime` 字段**，表达式求值成对象而非数组，被 connection 的
+  `z.array(String)` 拒绝——表现为「页面能打开，但所有 API 403 forbidden」。
+- **开关开启时若探测不到局域网 IP，会丢掉 connection 块**（`lib/patch.js`）：`lanAddresses()`
+  在 ESM 下残留了 `require('node:os')`，抛出的 `ReferenceError` 被外层 `catch {}` 静默吞掉，
+  永远返回空列表。已改为顶层 `import`，并把 `npm run check` 补上 `lib/patch.js`
+  （此前该文件根本没被语法检查覆盖，才让上述错误长期潜伏）。
+- **`302` 跳到自身造成无限重定向循环**（`lib/index.js`）：取不到带 token 的地址时原本回退成
+  `location: '/'`，浏览器会反复请求自己。现改为明确返回 401，交回官方语义。
+
+### 新增 / New
+
+- **`lib/patch.js`**：统一维护 profile `cordis.patch.yml` 的受管区域（幂等整体重写）。
+  「开启远程控制」现在一次性写两块——`webserver.host = '0.0.0.0'`（手机能连上）与
+  `connection.trustedHosts = ['192.168.x.x:port', …]`（手机能调 API），并用
+  `normalizeAuthority()` 保证每个 authority 都是能通过 `assertTrustedAuthority` 的规范形式；
+  外网域名由 `ensureTrustedAuthority()` 增量并入同一区域，不再产生互相冲突的重复块。
+- **端口自适应**（`lib/index.js`）：每 15s 跟随 `ctx.webServer.port`，端口变化（改 `--port`、
+  被占用回退到 OS 分配、profile patch 变更）时自动把外网隧道重绑到新端口。
+- **`tests/patch.test.mjs`**：针对 patch 读写的功能测试，覆盖 authority 规范化、
+  受管块幂等重写、域名增量并入、关闭时整块移除等 32 项断言。
+
+### 变更 / Changed
+
+- 未授权裸地址若既取不到 token 也无法安全自动登录，返回明确的 401，而不是把
+  「dsh web is starting」这种误导性 503 给到手机端。
+- 兼容性不变：老版 dsh（无 `connection` / 无浏览器会话认证）仍按原行为回退。
+
+## v1.8.0 (2026-09-06)
+
+### 新增 / New
+
+- **裸地址直达（自动登录）**（`lib/index.js`）：本插件现在接管 `GET /`。手机 / 远程设备**直接访问裸地址**（如 `http://192.168.3.119:3080`，不带 token）即可自动进入——
+  - 未授权访问 → 服务端 `302` 到带 token 的 URL（token 由服务端自动注入）→ 浏览器自动跟随 → 官方完成 `303 + Set-Cookie` → 自动回到裸 `/`；
+  - 已授权设备访问裸地址 → 直接返回官方完整 UI；
+  - 官方 token → cookie 的握手**一步未绕开**，只是把「手动重开带 token 链接」自动化，全程对用户无感，地址栏始终是干净裸地址。
+- **新版 dsh 浏览器会话认证适配**（`lib/index.js` + `lib/client.js`）：dsh `>=0.1.2-rc.1` 对 Web UI 强制「浏览器会话认证」（启动时打印一次性令牌，任何无 cookie 访问返回 401）。本插件自动兼容：
+  - `GET /` 由插件接管：首次裸地址访问自动完成授权，无需手动带 token；
+  - `/__dsh_remote/status` 返回的 `url` / `lanUrls` / `external.url` 同时携带官方认证 token（程序化调用仍可用），移动端 UI / 二维码 / 地址列表展示干净裸地址并提示「首次访问自动完成连接授权」；
+  - 老版 dsh（无认证 / 无 `connection` 服务）自动回退：`url` / `lanUrls` 为普通裸地址、`/` 直接返回官方 index，行为与旧版完全一致。
+
+### 修复 / Fixed
+- 无（行为变更见下）。
+
+### 变更 / Changed
+- **接管 `GET /`**：为避免与官方 index owner 冲突，插件在内部拉取官方 index（含全部官方 index taps 注入）时临时注销自身的 `/` 路由，取回后重新注册；插件卸载 / 服务停止时正确清理。
+- 手机访问地址 / 二维码 / 局域网列表改展示**裸地址**（配合自动登录，首次访问即可用），不再显示一长串 `?token=`。
+- 安全提示：裸地址自动登录等效于「局域网内能访问到该地址的设备都会自动获得授权」。若需要更强隔离，请在插件设置中开启**远程访问密码门禁**（对外网隧道生效）并仅在可信网络使用。
+
 ## v1.7.1 (2026-08-29)
 
 ### 新增 / New
