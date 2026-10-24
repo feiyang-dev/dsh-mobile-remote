@@ -1,5 +1,56 @@
 # 更新日志 / Changelog
 
+## v1.9.0 (2026-10-24)
+
+> 适配 **dsh 0.2.1-rc.3**。这一版重做了「对局域网开放」的实现方式——**不再改 webserver 绑定**。
+
+### 破坏性变更 / Breaking（面向 dsh 0.2.1+）
+
+dsh 0.2.1-rc.3 起，`webserver.host` **只接受一块具体网卡的 IP 字面量**：
+
+- `host: '0.0.0.0'`（旧版插件的做法）会在配置校验阶段抛错，进程 `code=1` 直接退出，所有下游插件都不激活；
+- 即使改绑到 `192.168.x.x`，**本机 `127.0.0.1` 的监听也随之消失** —— 桌面端窗口固定连回环，
+  会立刻白屏；官方桌面端还用 `--port 0`，patch 里重述 `port` 会让端口在重载后漂移，二维码/链接全部失效。
+
+因此 v1.9.0 **彻底放弃改绑定**，改为「旁挂 LAN 听众」。
+
+### 修复 / Fixed
+
+- **开启远程后桌面端窗口打不开（本机 127.0.0.1 不再监听）**：不再写 `webserver` 覆盖。
+- **官方桌面端开关点了没反应**：`patchFilePath()` 以前只认 `DSH_PROFILE` 环境变量，而官方桌面端
+  启动 dsh 时**不设该变量**，于是插件把 patch 写进 `profiles/web`，实际运行的却是 `profiles/desktop`。
+  现在优先取宿主 `profileContext.patchPath`（CLI / 官方桌面端 / 第三方壳全部适用），并依次回退
+  `ctx.baseUrl` → `DSH_PROFILE_DIR` → `DSH_HOME/profiles/<profile>`；`runtime.profile` 同步修正。
+- **写入 profile patch 会让 dsh 启动失败**：`!!js` 在该 YAML schema 里只能作用于**标量**。
+  旧写法 `trustedHosts: !!js [...]` 会被解析成「流式序列 + 标量标签」，报
+  `unknown tag !<tag:yaml.org,2002:js>`，直接让 dsh 起不来。现改为整体加引号的标量表达式
+  `trustedHosts: !!js "[...ctx.webStartup.trustedHosts, 'a', 'b']"`。
+- **端口漂移**：不再重述 `port`，宿主端口（含 `--port 0` 系统分配）保持不变。
+- **旧配置迁移**：启动时自动清理历史遗留的 `webserver` 绑定覆盖与
+  `ctx.webRuntime.trustedHosts` 表达式块（后者在 0.2.x 无此字段，求值即抛错），
+  迁出的域名并入受管 `trustedHosts`；若旧绑定正在生效，会在 HMR watcher 就绪后再改写，
+  确保监听被拉回回环。
+- **重复扫码登录**：LAN 听众统一把 `Host` / `Origin` 改写成回环 authority，
+  因此局域网访问**不再需要** `trustedHosts` 放行，也不会再出现「页面能开、`/api` 全 403」。
+
+### 新增 / New
+
+- **`lib/lanproxy.js`**：局域网旁挂听众。在 `<局域网IP>:<当前端口>` 再监听一份，
+  反向代理到 `127.0.0.1:<当前端口>`；支持 HTTP 与 WebSocket Upgrade，透传
+  `X-Forwarded-For`（设备列表仍显示手机真实 IP），长连接不因 keep-alive 超时被误杀。
+  开关即时生效，**无需重启 dsh、无需 HMR、不写任何配置**。
+- **移动端侧栏默认收起**：窄屏下侧栏轨道压到 `0px`，内容区吃满整屏；左下角新增悬浮按钮，
+  点开是**覆盖式抽屉**（不再挤压中栏），带半透明遮罩；点遮罩 / Esc / 选中会话即收起。
+  开合仍驱动官方 store（复用原生 toggle 按钮、aria 与快捷键），只是用 CSS 把「挤压」改写成「浮层」。
+- **`remoteEnabled` 持久化**：写在插件自己的 `config.json`（与密码共用，未知字段保留），
+  重启后自动恢复局域网听众；端口变化时 15s 内自适应重绑。
+- 设置页文案与开关反馈更新：开启后立即刷新状态（不再等 HMR 的 1.5s）。
+
+### 测试 / Tests
+
+- `tests/patch.test.mjs` 重写：覆盖「绝不写 webserver」「`!!js` 必须加引号」「旧配置迁移」
+  「authority 无端口形式」「profileContext 路径优先」等 43 项断言，全部通过。
+
 ## v1.8.1 (2026-10-07)
 
 ### 修复 / Fixed

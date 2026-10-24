@@ -23,7 +23,8 @@
 - **Mobile image upload** (v1.5.0): a new **"Upload image" button next to the + in the composer toolbar** lets phone users pick photos (system gallery / file picker) for DeepSeek's vision models — format/count/size pre-checks, thumbnail rail, and send-time upload all reuse DSH's native pipeline; the desktop UI is untouched.
 - **Connection QR code**: auto-generates a QR for `http://<lan-ip>:<port>` — scan it with your phone's camera / browser to connect.
 - **Bare-URL direct access with auto sign-in** (v1.8.0): just open `http://192.168.x.x:3080` (no token) and it enters automatically — the server transparently performs the new dsh browser-session handshake (`dsh >= 0.1.2-rc.1`); older dsh versions keep their original behavior.
-- **On / Off toggle**: switches the webserver listen address (`0.0.0.0` ↔ `127.0.0.1`) with one click. Applied via dsh's official HMR hot-reload — **no service restart needed**.
+- **On / Off toggle** (rebuilt in v1.9.0): starts a **side-car listener** on the LAN interface (`<lan-ip>:<port>` → `127.0.0.1:<port>`). dsh's own listen address and port are **never touched** — your local window, the desktop app and sessions keep working, and the switch takes effect instantly with **no restart and no config writes**.
+- **Mobile sidebar collapsed by default** (v1.9.0): on narrow screens the sidebar track is squeezed to `0px` so content gets the full width; a floating button opens an **overlay drawer** (no more squeezing the center column) with a scrim — closes on scrim tap / Esc / picking a session.
 - **Connected device count**: mobile heartbeats report online devices in real time.
 - **Remote access password gate** (v1.2.0+): set a password locally; external-tunnel visitors must enter it before the page loads — local/LAN access stays password-free.
 - **Faster remote loading** (v1.2.0+): larger frpc connection pool to stop the slow initial spinner over tunnels.
@@ -31,7 +32,7 @@
 - **Real external-tunnel status** (v1.4.1): no more fake "online" — the panel probes frpc's log to confirm the tunnel is really up, downgrades to "connecting" during reconnects, and shows a red **error card with the exact frpc reason** (e.g. `token in login doesn't match`) plus a one-click retry; FRP_TOKEN placeholder warnings from the relay show as a yellow banner; keep-alive heartbeats keep the relay's online state truthful.
 - LAN address list, phone access URLs, and config location at a glance.
 
-**Key selling point: pure CLI users don't need the desktop app.** The official CLI deliberately rejects `--host 0.0.0.0` for safety, but this plugin writes `webserver.host: 0.0.0.0` through the profile's `cordis.patch.yml` (or a `--patch <overlay>`) — exactly how the desktop app's "Mobile Remote Control" switch works. The phone and the computer share the same dsh backend process and the same `~/.dsh` data, so **sessions, history, workspace and settings are naturally two-way synced — no data copying involved**.
+**Key selling point: pure CLI users don't need the desktop app.** The official CLI rejects `--host 0.0.0.0` for safety, and since **dsh 0.2.1-rc.3 the patch layer rejects wildcard binds too** (`host: '0.0.0.0'` aborts startup during config validation), while binding a concrete NIC IP makes the loopback listener disappear (desktop windows go blank). So v1.9.0 uses a **side-car LAN listener** instead: dsh keeps listening on loopback only, and the plugin listens on the LAN interface and forwards. The phone and the computer still share the same dsh backend process and the same `~/.dsh` data, so **sessions, history, workspace and settings are naturally two-way synced — no data copying involved**.
 
 ---
 
@@ -72,7 +73,11 @@ This plugin optimizes it by:
 ## Screenshots
 
 ### Settings → Remote Control
-![Remote Control](./docs/assets/remote-control.png)
+
+Open **Settings → Remote Control** to see the on/off switch and status badge, the connection
+QR code, LAN address list, connected devices (expandable: system / browser / screen / network),
+runtime info, DSH state, network interfaces, the remote-access password, and the external tunnel
+(domain / frpc version / logs).
 
 ## Recommended Installation
 
@@ -147,14 +152,11 @@ dsh --profile web
 dsh --profile web --patch remote-control.patch.yml
 ```
 
-`remote-control.patch.yml`:
-
-```yaml
-- id: webserver
-  config:
-    host: '0.0.0.0'
-    port: !!js ctx.webStartup.port ?? 3080
-```
+> **Note (dsh ≥ 0.2.1-rc.3)**: **do not** hand-write a `- id: webserver` +
+> `host: '0.0.0.0'` overlay any more — the new schema aborts startup on wildcard binds,
+> and a concrete NIC IP would take the loopback listener away (desktop windows stop loading).
+> Since v1.9.0 the LAN exposure is provided by the plugin's own side-car listener,
+> so **no overlay is required** — just use the settings toggle.
 
 > **Security note**: enabling remote control exposes the service to your LAN. Use it only on trusted home / office networks — **do not expose it to the public internet**.
 
