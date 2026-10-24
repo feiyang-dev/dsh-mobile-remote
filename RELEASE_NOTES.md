@@ -1,4 +1,7 @@
-# dsh-mobile-remote v1.9.0
+# dsh-mobile-remote v1.9.1
+
+> v1.9.1 仅修复 1.9.0 的 npm 包内误带了一个本地备份文件（`lib/patch.js.bak-0000`）的问题，
+> 功能与 v1.9.0 完全一致，无代码变更。
 
 **DeepSeek Harness 移动端远程控制插件** —— 在 Web UI 设置页内置「远程控制」：连接二维码、一键开关、在线设备数，让手机通过局域网访问并操控电脑上的 DeepSeek Harness。
 
