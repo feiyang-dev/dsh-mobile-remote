@@ -1,46 +1,36 @@
-# dsh-mobile-remote v1.9.1
+# dsh-mobile-remote v2.0.0
 
-> v1.9.1 仅修复 1.9.0 的 npm 包内误带了一个本地备份文件（`lib/patch.js.bak-0000`）的问题，
-> 功能与 v1.9.0 完全一致，无代码变更。
+**DeepSeek Harness 远程访问插件** —— 在 Web UI 设置页内置「远程控制」：连接二维码、一键开关、在线设备数，让手机通过局域网 / 外网访问并操控电脑上的 DeepSeek Harness。移动端界面从 v2.0.0 起**完全交给官方 dsh**（0.2.2 已自带）。
 
-**DeepSeek Harness 移动端远程控制插件** —— 在 Web UI 设置页内置「远程控制」：连接二维码、一键开关、在线设备数，让手机通过局域网访问并操控电脑上的 DeepSeek Harness。
+## 本版更新（v2.0.0）
 
-## 本版更新（v1.9.0）—— 让远程控制在 dsh 0.2.1+ 上重新可用
+一句话：**适配「dsh 自己就绑在网卡上」的启动方式，并把外网 502 从"假在线"里揪出来；同时删掉所有自研移动端 UI 补丁。**
 
-一句话：**不再改 dsh 的监听绑定，改为旁挂一个局域网听众。** 桌面端窗口、端口、会话全都不受影响。
+### 修掉的两个真实故障
 
-### 为什么之前的版本用不了了
+| 症状 | 根因 | 修复 |
+| --- | --- | --- |
+| 局域网明明能访问，插件却显示**未开启**、**不显示二维码** | dsh 用 `--host 192.168.x.x` 启动时只监听那块网卡，`127.0.0.1` 上没有任何监听。旧版旁挂听众去绑**同一个** `<网卡IP>:<端口>` → `EADDRINUSE` → `running=false` | 新增 `bindInfo()`：`direct` 形态直接认定「局域网已可达」，只补其余网卡并跳过宿主已占用的地址；二维码/地址列表把宿主绑定地址排第一 |
+| 外网域名打开就是 **502 Bad Gateway**，面板却显示「在线」 | frpc 配置里的 `localIP = "127.0.0.1"` 转发到一个没人监听的端口，frps 与 nginx 侧只能回 502 | frpc 的 `localIP` 跟随宿主真实监听地址（非回环时改成网卡 IP）；并新增**外网入口 30s HTTP 可达性探测**，502 直接在面板标红 |
 
-| 症状 | 根因 |
-| --- | --- |
-| 开启开关后，**电脑上的窗口直接打不开/白屏** | 旧版把 `webserver.host` 改成 `0.0.0.0`。dsh 0.2.1-rc.3 起只接受具体网卡 IP，`0.0.0.0` 会让进程启动即退出；即使是具体 IP，改绑后 `127.0.0.1` 监听消失，桌面端固定连回环 → 白屏 |
-| **官方桌面端**里开关点了完全没反应 | 旧版按 `DSH_PROFILE` 环境变量定位 profile，而官方桌面端**不设该变量**（只把 profile 目录作为 argv 传参）→ patch 写进了 `profiles/web`，实际运行的是 `profiles/desktop` |
-| 写完 patch 后 **dsh 起不来**，报 `unknown tag !<tag:yaml.org,2002:js>` | `!!js` 在该 YAML schema 里只能作用于**标量**；`trustedHosts: !!js [...]` 会被当成「流式序列 + 标量标签」 |
-| 端口莫名变了、二维码/链接失效 | 官方桌面端用 `--port 0` 由系统分配端口，旧 patch 里重述 `port` 会让重载后的端口漂移 |
+### 移动端适配全部移除
 
-### 新版怎么做的
+官方 dsh 0.2.2 起自带移动端适配（`<768px` 侧栏浮层抽屉 + 遮罩、`1024px` 自动塌缩、移动 UA 不抢焦点、iOS 软键盘光标修正、PWA 清单），继续注入自己的 CSS 只会和官方改动互相打架：
 
-- **旁挂 LAN 听众（`lib/lanproxy.js`）**：在 `<局域网IP>:<当前端口>` 再监听一份，反向代理到
-  `127.0.0.1:<当前端口>`。HTTP 与 WebSocket 都通，`X-Forwarded-For` 透传真实手机 IP，
-  长连接不会被 keep-alive 超时误杀。**开关即时生效，无需重启 dsh、不写任何配置文件。**
-- **Host / Origin 改写成回环**：dsh 的 Host/Origin 信任围栏对回环一律放行，
-  因此局域网访问**不再需要** `trustedHosts`，也不会再出现「页面能打开、`/api` 全 403」。
-- **patch 只写 `connection.trustedHosts`**（外网隧道经 frp 直连真实监听时才需要），
-  用 `!!js "[...ctx.webStartup.trustedHosts, '域名']"` 合并启动参数，绝不覆盖 `webserver`。
-- **profile 路径校正**：优先 `profileContext.patchPath` —— CLI、官方桌面端、第三方壳全部适用。
-- **旧配置自动迁移**：清理历史遗留的 `webserver` 覆盖与 `ctx.webRuntime.trustedHosts` 块，
-  迁出的域名并入受管 trustedHosts；若旧绑定正在生效，会在 HMR watcher 就绪后再改写，把监听拉回回环。
+- 删除全部移动端 CSS（composer 换行 / 选择器限宽 / 16px 防缩放 / Tooltip 抑制 / 设置页单栏 / 菜单钳制 / 抽屉样式）；
+- 删除「上传图片」按钮与模拟 paste/drop 的图片 intake 逻辑（官方 `+ → 文件` 与粘贴/拖放链路已有）；
+- 删除自研 Toast、发送状态浮层、侧栏悬浮按钮与抽屉、设置弹窗结构打标；
+- 保留：设备心跳脚本（设置页「已连接设备」需要）、`crypto.randomUUID` 内网兜底（在门禁脚本里）、远程访问密码门禁。
 
-### 移动端体验
+### 其它
 
-- **侧栏默认收起**：窄屏下侧栏轨道压到 `0px`，内容区吃满整屏（此前固定的 56px 图标 rail 在
-  390px 手机上仍占 14% 宽）。
-- **悬浮按钮唤出抽屉**：左上角悬浮汉堡按钮 → 覆盖式抽屉（不再挤压中栏）+ 半透明遮罩；
-  点遮罩 / Esc / 选中会话自动收起。开合仍驱动官方 store（复用原生 toggle、aria、快捷键）。
-- 端口变化时局域网听众 15s 内自适应重绑；`remoteEnabled` 持久化，重启自动恢复。
+- `lib/lanproxy.js`：`start(hosts, port, { upstreamHost, skipHosts })`，转发上游可定制、已占用地址自动跳过；`status()` 增加 `upstream`。
+- `lib/index.js`：`/status` 新增 `direct`（宿主直连形态）与 `lan.upstream`；`toggle` 在直连形态返回 `direct: true` 并说明需要改启动参数才能关闭；`external` 新增 `localHost` / `probe`。
+- `lib/client.js`：直连形态下开关置灰并显示「局域网直连 · 由 dsh 提供」说明卡；外网卡片展示入口探测结果。
+- 版本号提升到 **2.0.0**（移除移动端 UI 属于行为变更）。
 
 ### 验证
 
-- `tests/patch.test.mjs`：43 项断言全通过（含「绝不写 webserver」「`!!js` 必须加引号」「旧配置迁移」）。
-- 实测环境：dsh 0.2.1-rc.3 + Windows；验证了「本机端口不变 + 局域网同端口可访问 +
-  扫码自动登录 + `/api` 不再 403 + WebSocket 升级透传 + 开关即时生效（无需重启）」。
+- `node --test tests/patch.test.mjs`：43 项断言通过。
+- 新增 `tests/bind-aware.test.mjs`：4 项断言通过（上游可定制、`skipHosts` 不重复绑、全部被占用时不误报失败、frpc `localIP` 跟随宿主）。
+- 实测环境：Windows + dsh 0.2.2（`--host 192.168.3.119 --port 3080`）。修复前：`127.0.0.1:3080` = `ECONNREFUSED`，`/status` 返回 `remoteEnabled:false`，公网域名 nginx 502；修复后 `direct` 形态下 `remoteEnabled:true`、二维码正常，frpc `localIP` 改为宿主网卡地址。

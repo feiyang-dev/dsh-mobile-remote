@@ -1,7 +1,7 @@
 {
   "name": "@feiyang666/dsh-mobile-remote",
-  "version": "1.9.1",
-  "description": "DeepSeek Harness mobile remote-control plugin: LAN access through a side-car listener (dsh 0.2.1+ rejects wildcard binds, so the host listener is never touched: no restart, no port drift, local window keeps working), external tunnel with real status detection, QR / on-off toggle / remote-access password gate, rich telemetry and mobile-first UI polish.",
+  "version": "2.0.0",
+  "description": "DeepSeek Harness remote-access plugin: LAN access that adapts to how dsh binds (loopback side-car listener, or directly reusing the `--host <nic>` listener that dsh already owns), external tunnel through a relay server with real reachability probing (502 detection), QR code / on-off toggle / remote-access password gate and device telemetry. No mobile UI patches: dsh 0.2.2+ ships its own responsive/mobile layout.",
   "keywords": [
     "deepseek",
     "harness",

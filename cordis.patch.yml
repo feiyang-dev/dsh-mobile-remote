@@ -8,7 +8,10 @@
 #
 # 插件是 host + client 双面插件：
 #   - host 侧（lib/index.js，inject [webServer]）：
-#       * 通过 ctx.webServer.tapIndex 注入移动端响应式 CSS / JS；
+#       * 局域网：宿主只绑回环时旁挂 LAN 听众；宿主用 --host <网卡IP> 启动时直接复用它；
+#       * 外网：经中转服务器 + frpc 隧道，并对公网入口做 30s 可达性探测（暴露 502）；
+#       * 通过 ctx.webServer.tapIndex 仅注入一个设备心跳脚本（不含任何移动端 UI 补丁，
+#         官方 dsh 0.2.2 起自带移动端适配）；
 #       * 通过 ctx.webServer.register 提供 /__dsh_remote/* API
 #         （status / toggle / heartbeat / qr），支持设置页远程控制开关、二维码、设备数。
 #   - client 侧（lib/client.js，package.json 的 dsh.client 声明）：

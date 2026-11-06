@@ -1,5 +1,42 @@
 # 更新日志 / Changelog
 
+## v2.0.0 (2026-11-07)
+
+> 适配 **dsh 0.2.2-rc.1**。这一版修掉两个真实故障，并把自研移动端适配全部删除。
+
+### 修复 / Fixed
+
+- **局域网能访问但面板显示「未开启」、没有二维码**：dsh 用 `--host <网卡IP>` 启动时只监听那块
+  网卡（`127.0.0.1` 上没有任何监听），旧版旁挂听众去绑同一个 `<网卡IP>:<端口>` 必然
+  `EADDRINUSE`，于是 `running=false`。新增 `bindInfo()` 区分两种形态：
+  `direct`（宿主自己绑网卡）直接视为「局域网已可达」，只补其余网卡并跳过宿主已占用的地址。
+- **外网域名 502 Bad Gateway**：frpc 配置里的 `localIP = "127.0.0.1"` 指向没人监听的端口。
+  现在 `localIP` 跟随宿主真实监听地址；并新增**外网入口 30s HTTP 可达性探测**，
+  502 / 连不上会直接在设置页标红并显示 frpc 实际转发地址（进程活着不再等于「在线」）。
+
+### 移除 / Removed（官方已自带移动端适配）
+
+- 移动端 CSS 全部删除（composer 换行、选择器限宽、iOS 16px 防缩放、Tooltip 抑制、
+  设置页单栏、菜单水平钳制、侧栏抽屉样式）。
+- 「上传图片」按钮与图片 intake（模拟 paste/drop）删除 —— 官方 `+ → 文件` 与粘贴/拖放已覆盖。
+- 自研 Toast、composer 发送状态浮层、侧栏悬浮按钮 / 覆盖式抽屉、设置弹窗结构打标。
+- 保留设备心跳脚本（设置页「已连接设备」）、`crypto.randomUUID` 内网兜底（在门禁脚本内）、
+  远程访问密码门禁。
+
+### 变更 / Changed
+
+- `lib/lanproxy.js`：`start(hosts, port, { upstreamHost, skipHosts })`；`status()` 增加 `upstream`。
+- `lib/index.js`：`/status` 增加 `direct`、`lan.upstream`、`external.localHost`、`external.probe`。
+- `lib/client.js`：直连形态开关置灰 + 「局域网直连 · 由 dsh 提供」说明卡；外网卡片展示探测结果。
+- `lib/external.js`：`startExternal(..., localHost)`、`autoRestoreExternal(..., localHost)`；
+  导出 `finalizeFrpcConfig` 供测试。
+
+### 测试 / Tests
+
+- 新增 `tests/bind-aware.test.mjs`（4 项）：上游可定制、`skipHosts` 不重复绑、
+  全部地址被占用时不误报失败、frpc `localIP` 跟随宿主。
+- `tests/patch.test.mjs` 43 项断言仍全部通过。
+
 ## v1.9.1 (2026-10-24)
 
 ### 修复 / Fixed
